@@ -1,0 +1,5 @@
+*.log
+/var/bash_panel/mail_users
+/var/bash_panel/userdata/*
+backups/
+temp/
