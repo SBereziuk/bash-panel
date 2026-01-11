@@ -6,54 +6,68 @@ source "$SCRIPT_DIR/functions.sh"
 
 PANEL_DATA_DIR="/var/bash_panel/userdata"
 MAIL_USERS_FILE="/var/bash_panel/mail_users"
+EXIM_DOMAINS="/etc/exim/domains"
 
-echo -e "${RED}=== DELETE MAIL ACCOUNT ===${NC}"
+echo -e "${CYAN}=== DELETE MAIL ACCOUNT ===${NC}"
 
 # --- Step 1: Select Owner ---
 users=($(ls -1 "$PANEL_DATA_DIR" 2>/dev/null))
 [[ ${#users[@]} -eq 0 ]] && error_exit "No users found."
 
-echo "Select owner:"
+echo "Select account owner:"
 select username in "${users[@]}"; do
     [[ -n "$username" ]] && break || echo "Invalid selection."
 done
 
-# --- Step 2: Select Account (Compatible loop) ---
-accounts=()
-# We read the auth file and look for accounts belonging to the user's home
-while IFS=: read -r email _ _ _ _ acc_home _; do
-    if [[ "$acc_home" == /home/"$username"/mail/* ]]; then
-        accounts+=("$email")
+# --- Step 2: Select Domain ---
+mail_domains=()
+while IFS=: read -r dname owner; do
+    owner_trimmed=$(echo "$owner" | xargs)
+    if [[ "$owner_trimmed" == "$username" ]]; then
+        mail_domains+=("$dname")
     fi
-done < "$MAIL_USERS_FILE"
+done < "$EXIM_DOMAINS"
 
-if [ ${#accounts[@]} -eq 0 ]; then
-    error_exit "No mail accounts found for user $username."
-fi
+[[ ${#mail_domains[@]} -eq 0 ]] && error_exit "No mail domains found for $username."
 
-echo -e "\nSelect account to DELETE:"
-select target_email in "${accounts[@]}"; do
-    [[ -n "$target_email" ]] && break || echo "Invalid selection."
+echo -e "\nSelect domain:"
+select domain in "${mail_domains[@]}"; do
+    [[ -n "$domain" ]] && break || echo "Invalid selection."
 done
 
-# --- Step 3: Confirmation ---
-read -p "Are you sure you want to delete $target_email? (y/N): " confirm
-[[ ! $confirm =~ ^[Yy]$ ]] && exit 0
+# --- Step 3: Select Mail User ---
+# Get list of mail users for this specific domain from the auth file
+existing_users=($(grep "@$domain:" "$MAIL_USERS_FILE" | cut -d'@' -f1))
 
-# --- Step 4: Removal ---
-# Get path again before deleting from the file
-acc_path=$(grep "^$target_email:" "$MAIL_USERS_FILE" | cut -d: -f6)
+[[ ${#existing_users[@]} -eq 0 ]] && error_exit "No mail accounts found for $domain."
 
-log "Removing $target_email from auth file..."
-# Escape dots for sed
-escaped_email=$(echo "$target_email" | sed 's/\./\\./g')
-sed -i "/^$escaped_email:/d" "$MAIL_USERS_FILE"
+echo -e "\nSelect mail account to delete:"
+select mail_user in "${existing_users[@]}"; do
+    [[ -n "$mail_user" ]] && break || echo "Invalid selection."
+done
 
-if [ -d "$acc_path" ] && [ -n "$acc_path" ]; then
-    log "Deleting physical mailbox files in $acc_path..."
-    rm -rf "$acc_path"
-else
-    log "Warning: Mailbox directory not found or path empty."
+full_email="${mail_user}@${domain}"
+
+# --- Step 4: Confirmation ---
+read -p "Are you sure you want to delete $full_email and all its emails? (y/n): " confirm
+[[ "$confirm" != "y" ]] && echo "Aborted." && exit 0
+
+# --- Step 5: Get Path and Remove Data ---
+# Extract path from the 6th field of the passwd-file before deleting the record
+ACC_PATH=$(grep "^${full_email}:" "$MAIL_USERS_FILE" | cut -d':' -f6)
+
+log "Removing $full_email from $MAIL_USERS_FILE..."
+sed -i "/^${full_email}:/d" "$MAIL_USERS_FILE"
+
+if [[ -d "$ACC_PATH" ]]; then
+    log "Deleting physical files in $ACC_PATH..."
+    rm -rf "$ACC_PATH"
 fi
 
-echo -e "\n${GREEN}SUCCESS: Account $target_email has been removed.${NC}"
+# --- Step 6: Summary Output ---
+echo -e "\n${RED}##############################################################################${NC}"
+echo -e "${RED}                MAIL ACCOUNT DELETED SUCCESSFULLY                             ${NC}"
+echo -e "Account:        $full_email"
+echo -e "Owner:          $username"
+echo -e "Status:         All files and records removed"
+echo -e "${RED}##############################################################################${NC}\n"

@@ -44,29 +44,30 @@ grep -q "^${full_email}:" "$MAIL_USERS_FILE" 2>/dev/null && error_exit "Account 
 
 read -s -p "Enter password (empty for random): " mail_pass
 echo ""
-[[ -z "$mail_pass" ]] && mail_pass=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 12) && echo "Pass: $mail_pass"
+[[ -z "$mail_pass" ]] && mail_pass=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 12)
 
 # --- Step 4: Hash Password ---
-pass_hash=$(doveadm pw -s SHA512-CRYPT -p "$mail_pass")
+# [2026-01-11] MD5-CRYPT used for Dovecot compatibility
+pass_hash=$(openssl passwd -1 "$mail_pass")
 
-# --- Step 5: Create Maildir (Owned by User) ---
-# Path: /home/username/mail/domain/user
+# --- Step 5: Create Maildir ---
 MAIL_ROOT="/home/$username/mail"
-DOMAIN_PATH="$MAIL_ROOT/$domain"
-ACC_PATH="$DOMAIN_PATH/$mail_user"
+ACC_PATH="$MAIL_ROOT/$domain/$mail_user"
 
 log "Creating storage for $full_email..."
-
-# Create directories as root first
 mkdir -p "$ACC_PATH"/{cur,new,tmp}
-
-# Set ownership to the system user and vmail group
-# This allows the user to see disk usage and vmail to write letters
 chown -R "$username:vmail" "$MAIL_ROOT"
 chmod -R 770 "$MAIL_ROOT"
 
 # --- Step 6: Save to Auth File ---
-# We still use UID 5000 (vmail) for the service to manage files
 echo "${full_email}:${pass_hash}:5000:5000::${ACC_PATH}:/sbin/nologin" >> "$MAIL_USERS_FILE"
+chmod 644 "$MAIL_USERS_FILE"
 
-echo -e "\n${GREEN}Success! Account $full_email created and owned by $username.${NC}"
+# --- Step 7: Summary Output ---
+echo -e "\n${GREEN}##############################################################################${NC}"
+echo -e "${GREEN}                MAIL ACCOUNT CREATED SUCCESSFULLY                             ${NC}"
+echo -e "Owner:          $username"
+echo -e "Email:          $full_email"
+echo -e "Password:       $mail_pass"
+echo -e "Storage Path:   $ACC_PATH"
+echo -e "${GREEN}##############################################################################${NC}\n"
