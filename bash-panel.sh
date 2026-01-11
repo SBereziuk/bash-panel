@@ -2,7 +2,7 @@
 
 # --- Include global settings ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/functions.sh"
+source "$SCRIPT_DIR/scripts/functions.sh"
 
 # Function to display the menu
 show_menu() {
@@ -28,41 +28,41 @@ while true; do
 
     case $choice in
         1)
-            bash "$SCRIPT_DIR/list_all.sh"
+            bash "$SCRIPT_DIR/scripts/list_all.sh"
             read -p "Press Enter to return to menu..."
             ;;
         2)
             echo -e "\n1) Add User\n2) Delete User\n3) Back"
             read -p "Option: " u_choice
-            [[ "$u_choice" == "1" ]] && bash "$SCRIPT_DIR/add_user.sh"
-            [[ "$u_choice" == "2" ]] && bash "$SCRIPT_DIR/del_user.sh"
+            [[ "$u_choice" == "1" ]] && bash "$SCRIPT_DIR/scripts/add_user.sh"
+            [[ "$u_choice" == "2" ]] && bash "$SCRIPT_DIR/scripts/del_user.sh"
             ;;
         3)
             echo -e "\n1) Add Domain\n2) Delete Domain\n3) Issue SSL (Let's Encrypt)\n4) Back"
             read -p "Option: " d_choice
-            [[ "$d_choice" == "1" ]] && bash "$SCRIPT_DIR/add_domain.sh"
-            [[ "$d_choice" == "2" ]] && bash "$SCRIPT_DIR/del_domain.sh"
-            [[ "$d_choice" == "3" ]] && bash "$SCRIPT_DIR/add_ssl.sh"
+            [[ "$d_choice" == "1" ]] && bash "$SCRIPT_DIR/scripts/add_domain.sh"
+            [[ "$d_choice" == "2" ]] && bash "$SCRIPT_DIR/scripts/del_domain.sh"
+            [[ "$d_choice" == "3" ]] && bash "$SCRIPT_DIR/scripts/add_ssl.sh"
             ;;
         4)
             echo -e "\n1) Add Database\n2) Delete Database\n3) Back"
             read -p "Option: " db_choice
-            [[ "$db_choice" == "1" ]] && bash "$SCRIPT_DIR/add_db.sh"
-            [[ "$db_choice" == "2" ]] && bash "$SCRIPT_DIR/del_db.sh"
+            [[ "$db_choice" == "1" ]] && bash "$SCRIPT_DIR/scripts/add_db.sh"
+            [[ "$db_choice" == "2" ]] && bash "$SCRIPT_DIR/scripts/del_db.sh"
             ;;
         5)
             echo -e "\n1) Add FTP User\n2) Delete FTP User\n3) Back"
             read -p "Option: " ftp_choice
-            [[ "$ftp_choice" == "1" ]] && bash "$SCRIPT_DIR/add_ftp_user.sh"
-            [[ "$ftp_choice" == "2" ]] && bash "$SCRIPT_DIR/del_ftp_user.sh"
+            [[ "$ftp_choice" == "1" ]] && bash "$SCRIPT_DIR/scripts/add_ftp_user.sh"
+            [[ "$ftp_choice" == "2" ]] && bash "$SCRIPT_DIR/scripts/del_ftp_user.sh"
             ;;
         6)
             echo -e "\n1) Enable Mail for Domain\n2) Disable Mail for Domain\n3) Add Mailbox\n4) Delete Mailbox\n5) Back"
             read -p "Option: " m_choice
-            [[ "$m_choice" == "1" ]] && bash "$SCRIPT_DIR/add_mail_domain.sh"
-            [[ "$m_choice" == "2" ]] && bash "$SCRIPT_DIR/del_mail_domain.sh"
-            [[ "$m_choice" == "3" ]] && bash "$SCRIPT_DIR/add_mail_acc.sh"
-            [[ "$m_choice" == "4" ]] && bash "$SCRIPT_DIR/del_mail_acc.sh"
+            [[ "$m_choice" == "1" ]] && bash "$SCRIPT_DIR/scripts/add_mail_domain.sh"
+            [[ "$m_choice" == "2" ]] && bash "$SCRIPT_DIR/scripts/del_mail_domain.sh"
+            [[ "$m_choice" == "3" ]] && bash "$SCRIPT_DIR/scripts/add_mail_acc.sh"
+            [[ "$m_choice" == "4" ]] && bash "$SCRIPT_DIR/scripts/del_mail_acc.sh"
             ;;
         0)
             echo "Goodbye!"
