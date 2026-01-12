@@ -13,7 +13,7 @@ GLOBAL_DOMAINS_FILE="/var/bash_panel/global_domains.list"
 
 echo -e "${CYAN}=== ADD NEW DOMAIN ===${NC}"
 
-# --- Крок 1: Перевірка наявності користувачів та вибір ---
+# --- Step 1: Check for existing users and select owner ---
 if [ ! -d "$PANEL_DATA_DIR" ] || [ -z "$(ls -A "$PANEL_DATA_DIR")" ]; then
     error_exit "No users found in $PANEL_DATA_DIR. Please create a user first using add_user.sh"
 fi
@@ -30,12 +30,12 @@ select username in "${users[@]}"; do
     fi
 done
 
-# --- Крок 2: Виявлення IP сервера ---
+# --- Step 2: Detect Server IP ---
 log "Detecting server IP address..."
 SERVER_IP=$(curl -s --connect-timeout 5 https://api.ipify.org || hostname -I | awk '{print $1}')
 [[ -z "$SERVER_IP" ]] && error_exit "Could not detect server IP address."
 
-# --- Крок 3: Введення домену та перевірка ---
+# --- Step 3: Input Domain Name and Validation ---
 read -p "Enter Domain Name (e.g., example.com): " domain
 domain=$(echo "$domain" | tr '[:upper:]' '[:lower:]' | xargs)
 
@@ -45,7 +45,7 @@ if grep -q "^$domain:" "$GLOBAL_DOMAINS_FILE" 2>/dev/null; then
     error_exit "Domain $domain is already hosted on this server."
 fi
 
-# --- Крок 4: Вибір версії PHP ---
+# --- Step 4: Select PHP Version ---
 echo -e "\nSelect PHP Version for $domain:"
 php_versions=("7.4" "8.1" "8.2" "8.3")
 select php_ver in "${php_versions[@]}"; do
@@ -59,7 +59,7 @@ select php_ver in "${php_versions[@]}"; do
     fi
 done
 
-# --- Крок 5: Створення PHP-пулу з шаблону ---
+# --- Step 5: Create PHP Pool from Template ---
 POOL_CONF="/etc/opt/remi/php${v_nodot}/php-fpm.d/${domain}.conf"
 if [ -f "$TPL_DIR/php_pool.tpl" ]; then
     log "Generating isolated PHP-FPM pool..."
@@ -71,14 +71,14 @@ else
     error_exit "Template $TPL_DIR/php_pool.tpl not found!"
 fi
 
-# --- Крок 6: Налаштування директорій ---
+# --- Step 6: Directory Setup ---
 USER_DOMAIN_DIR="/home/$username/domains/$domain"
 log "Creating directory: $USER_DOMAIN_DIR"
 mkdir -p "$USER_DOMAIN_DIR"
 chown $username:$username "$USER_DOMAIN_DIR"
 chmod 755 "$USER_DOMAIN_DIR"
 
-# --- Крок 7: Генерація Nginx Vhost ---
+# --- Step 7: Generate Nginx Vhost ---
 log "Generating Nginx config..."
 CONF_FILE="/etc/nginx/conf.d/$domain.conf"
 if [ -f "$TPL_DIR/nginx.tpl" ]; then
@@ -91,7 +91,7 @@ else
     error_exit "Nginx template missing at $TPL_DIR/nginx.tpl"
 fi
 
-# --- Крок 8: Налаштування BIND DNS ---
+# --- Step 8: Configure BIND DNS ---
 log "Configuring DNS..."
 ZONE_FILE="/var/named/$domain.db"
 SERIAL=$(date +%Y%m%d%H)
@@ -110,14 +110,14 @@ if ! grep -q "zone \"$domain\"" /etc/named.conf; then
     echo "" >> /etc/named.conf
 fi
 
-# --- Крок 9: Деплой вітальної сторінки ---
+# --- Step 9: Deploy Welcome Page ---
 if [ -f "$TPL_DIR/index.php" ]; then
     cp "$TPL_DIR/index.php" "$USER_DOMAIN_DIR/index.php"
     sed -i "s/{{DOMAIN}}/$domain/g" "$USER_DOMAIN_DIR/index.php"
     chown $username:$username "$USER_DOMAIN_DIR/index.php"
 fi
 
-# --- Крок 10: Метадані та перезапуск сервісів ---
+# --- Step 10: Metadata and Service Restart ---
 echo "$domain:$username" >> "$GLOBAL_DOMAINS_FILE"
 echo "$domain|PHP:$php_ver|V_NODOT:$v_nodot|IP:$SERVER_IP" >> "$PANEL_DATA_DIR/$username/domains.list"
 
@@ -126,7 +126,7 @@ systemctl restart "$PHP_SVC"
 nginx -t && systemctl reload nginx
 rndc reload || systemctl reload named
 
-# --- ФІНАЛЬНИЙ ЗВІТ (SUMMARY) ---
+# --- FINAL SUMMARY ---
 echo -e "\n${GREEN}##############################################################################${NC}"
 echo -e "${GREEN}      DOMAIN $domain ADDED SUCCESSFULLY        ${NC}"
 echo -e "Owner:          ${YELLOW}$username${NC}"

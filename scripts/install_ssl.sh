@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# --- Налаштування шляхів ---
+# --- Path Configuration ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/functions.sh"
 
@@ -8,7 +8,7 @@ PANEL_DATA_DIR="/var/bash_panel/userdata"
 
 echo -e "${CYAN}=== SSL CERTIFICATE INSTALLER (Let's Encrypt) ===${NC}"
 
-# --- Крок 0: Перевірка залежностей ---
+# --- Step 0: Dependency Check ---
 check_ssl_requirements() {
     local missing_pkgs=()
     ! command -v certbot &> /dev/null && missing_pkgs+=("certbot")
@@ -21,7 +21,7 @@ check_ssl_requirements() {
 }
 check_ssl_requirements
 
-# --- Крок 1: Вибір користувача ---
+# --- Step 1: Select Owner ---
 users=($(ls -1 "$PANEL_DATA_DIR" 2>/dev/null))
 [[ ${#users[@]} -eq 0 ]] && error_exit "No users found."
 
@@ -30,7 +30,7 @@ select username in "${users[@]}"; do
     [[ -n "$username" ]] && break || echo "Invalid selection."
 done
 
-# --- Крок 2: Вибір домену ---
+# --- Step 2: Select Domain ---
 USER_DOMAINS_FILE="$PANEL_DATA_DIR/$username/domains.list"
 [[ ! -s "$USER_DOMAINS_FILE" ]] && error_exit "User has no domains."
 
@@ -44,7 +44,7 @@ select domain in "${domains[@]}"; do
     [[ -n "$domain" ]] && break || echo "Invalid selection."
 done
 
-# --- Крок 3: Перевірка DNS (A-запис) ---
+# --- Step 3: DNS Validation (A-Record check) ---
 log "Checking DNS for $domain..."
 SERVER_IP=$(curl -s --connect-timeout 5 https://api.ipify.org)
 DOMAIN_IP=$(dig +short "$domain" | tail -n1)
@@ -55,7 +55,7 @@ if [ "$DOMAIN_IP" != "$SERVER_IP" ]; then
     [[ ! $dns_confirm =~ ^[Yy]$ ]] && exit 0
 fi
 
-# --- Крок 4: Запуск Certbot ---
+# --- Step 4: Run Certbot ---
 log "Requesting SSL from Let's Encrypt for $domain and www.$domain..."
 
 certbot --nginx -d "$domain" -d "www.$domain" --non-interactive --agree-tos --register-unsafely-without-email
@@ -63,10 +63,10 @@ certbot --nginx -d "$domain" -d "www.$domain" --non-interactive --agree-tos --re
 if [ $? -eq 0 ]; then
     log "SSL installed successfully for $domain!"
     
-    # Оновлюємо мітку SSL у domains.list користувача
+    # Update SSL status flag in user's domains.list
     sed -i "s/|$domain|/|$domain|SSL:YES|/" "$USER_DOMAINS_FILE"
     
-    # Налаштування автопродовження (якщо ще немає)
+    # Setup auto-renewal cron job (if not already present)
     if ! crontab -l 2>/dev/null | grep -q "certbot renew"; then
         (crontab -l 2>/dev/null; echo "0 0,12 * * * certbot renew -q") | crontab -
         log "Auto-renewal cron job added."
