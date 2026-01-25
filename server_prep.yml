@@ -1,0 +1,27 @@
+---
+# This playbook performs basic server preparation
+- name: Prepare local workstation
+  hosts: localhost
+  connection: local
+# become: yes # Runs tasks with sudo
+
+  tasks:
+    - name: Ensure 'htop' and 'net-tools' are installed
+      package:        
+        name: 
+          - htop
+          - net-tools
+        state: present
+        update_cache: yes
+
+    - name: Create a 'backups' directory in home
+      file:
+        path: "{{ ansible_env.HOME }}/my_backups"
+        state: directory
+        mode: '0755'
+
+    - name: Create an empty file for security logs
+      file:
+        path: "{{ ansible_env.HOME }}/my_backups/malware_log.txt"
+        state: touch
+        mode: '0644'
